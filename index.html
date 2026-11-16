@@ -960,12 +960,10 @@ function onNet(m){
 /* ================= 낮·밤·날씨·소리 ================= */
 // 배경 음악: 관리자가 여러 곡을 넣어 두고 한 곡을 골라 반복 재생 (이 브라우저의 IndexedDB에 저장)
 const BGM=$('#a-bgm');let tracks=[],curKey=null,curUrl=null,soundOn=false;
-// 파일 이름(한글 포함)을 저장소 열쇠로 쓸 수 있는 글자로 바꿔 담아 두고, 목록에서 다시 풀어 보여 줘요
-const trackKey=name=>Date.now()+'_'+btoa(unescape(encodeURIComponent(name))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-const trackName=key=>{try{const b=key.replace(/^\d+_/,'').replace(/-/g,'+').replace(/_/g,'/');return decodeURIComponent(escape(atob(b)))}catch{return key}};
-async function loadAudio(){if(!sb)return;let list=[];
-  try{const{data,error}=await sb.storage.from('office-audio').list('',{limit:200,sortBy:{column:'name',order:'asc'}});if(!error)list=data||[]}catch{}
-  tracks=list.filter(o=>o.name&&!o.name.startsWith('.')).map(o=>({key:o.name,name:trackName(o.name),url:sb.storage.from('office-audio').getPublicUrl(o.name).data.publicUrl}));
+// 배경 음악: 사이트와 함께 GitHub에 올린 bgm 폴더의 파일 (한 곡을 골라 반복 재생, 턴테이블에서 바꿔요)
+// 곡을 더하거나 빼려면 bgm 폴더에 파일을 넣고 이 목록을 고친 뒤 다시 올려요
+const BGM_LIST=[{key:'bgm/rain-cafe.mp3',name:'비오는 카페'},{key:'bgm/snow-cafe.mp3',name:'눈오는 카페'},{key:'bgm/jazz-next-door.mp3',name:'옆방 재즈'},{key:'bgm/keyboard.mp3',name:'키보드 소리'}];
+async function loadAudio(){tracks=BGM_LIST.map(t=>({...t,url:t.key}));
   const t=tracks.find(x=>x.key===S.set.track)||tracks[0],k=t?t.key:null;
   if(k!==curKey){curKey=k;curUrl=t?t.url:null;if(curUrl)BGM.src=curUrl;else BGM.removeAttribute('src')}
   applyAudio()}
@@ -1161,11 +1159,7 @@ function openAdmin(){if(!user(me)?.admin)return;const err=h('p',{className:'err'
   const trackList=h('div',{className:'list'},tracks.length?tracks.map(t=>h('div',{className:'card',style:'display:flex;align-items:center;gap:8px;flex-wrap:wrap'},
       h('span',{style:'flex:1;min-width:0;overflow-wrap:anywhere'},t.name),
       h('button',{type:'button',className:'btn ghost small','aria-pressed':String(t.key===curKey),async onclick(){await setState('track',t.key);await loadAudio();openAdmin()}},t.key===curKey?'지금 나오는 곡':'이 곡 틀기'),
-      h('button',{type:'button',className:'btn ghost small',async onclick(){const{error}=await sb.storage.from('office-audio').remove([t.key]);if(error)return err.textContent='빼지 못했어요: '+error.message;if(S.set.track===t.key)await setState('track','');await loadAudio();changed();openAdmin()}},'빼기'))):
-    h('p',{className:'empty'},'아직 넣은 음원이 없어요. 아래에서 파일을 골라 넣어 주세요.'));
-  const addTracks=h('input',{type:'file',accept:'audio/*',multiple:true,id:'ad-tracks',async onchange(e){
-    try{for(const f of e.target.files){const{error}=await sb.storage.from('office-audio').upload(trackKey(f.name),f,{contentType:f.type||'audio/mpeg'});if(error)throw error}await loadAudio();changed();openAdmin()}
-    catch(x){err.textContent='음원을 올리지 못했어요. 이메일 관리자로 로그인해야 하고, 파일은 50MB까지예요. ('+(x.message||'')+')'}}});
+      )):h('p',{className:'empty'},'아직 음원이 없어요.'));
   openDlg('관리자',
     h('h3',{},'날씨'),seg('weather',[['clear','맑음'],['rain','비'],['snow','눈']]),
     h('h3',{},'시간'),seg('time',[['auto','자동 (8시~17시 낮)'],['day','항상 낮'],['night','항상 밤']]),
@@ -1177,7 +1171,7 @@ function openAdmin(){if(!user(me)?.admin)return;const err=h('p',{className:'err'
           setState('frameImg',c.toDataURL('image/jpeg',.85)).then(()=>{drawFrame();openAdmin()})};
         im.onerror=()=>{err.textContent='그림을 열지 못했어요. JPG나 PNG 파일인지 확인해 주세요.'};im.src=url}}),
       S.set.frameImg?h('button',{type:'button',className:'btn ghost small',onclick(){setState('frameImg','').then(()=>{drawFrame();openAdmin()})}},'기본 그림으로'):null),
-    h('h3',{},'배경 음악'),trackList,h('label',{className:'f',style:'margin-top:10px'},'음원 넣기 (여러 개를 한 번에 골라도 돼요)',addTracks),
+    h('h3',{},'배경 음악'),trackList,h('p',{style:'margin:8px 0 0;color:var(--muted);font-size:13px'},'고른 곡이 계속 반복돼요. 곡을 더하거나 빼려면 bgm 폴더에 넣고 Claude에게 깃허브에 다시 올려 달라고 하세요.'),
     h('label',{className:'f',style:'margin-top:10px'},'음량',h('input',{type:'range',id:'ad-vol',min:0,max:1,step:.05,value:S.set.vol,style:'padding:0',oninput(e){S.set.vol=+e.target.value;try{localStorage.setItem(KEY+'.vol',S.set.vol)}catch{}applyAudio()}})),
     h('h3',{},`멤버 (${S.users.length}/5)`),
     h('ul',{className:'members'},S.users.map(u=>{
@@ -1207,7 +1201,7 @@ function openAdmin(){if(!user(me)?.admin)return;const err=h('p',{className:'err'
 function renderNotice(){const t=(S.set.notice||'').trim();$('#notice').hidden=!t;$('#noticeText').textContent=t}
 function renderAll(){applyScene();drawWB();drawFrame();renderNotice();renderChat();renderBadge()}
 $('#cafeBtn').onclick=openCafe;$('#lookBtn').onclick=openLook;$('#boardBtn').onclick=openBoard;$('#notesBtn').onclick=()=>openNotes('in');$('#adminBtn').onclick=openAdmin;$('#logoutBtn').onclick=leave;
-$('#soundBtn').onclick=()=>{soundOn=!soundOn;applyAudio();if(soundOn&&!tracks.length)bubble(butler,'아직 음원이 없어요. 관리자 메뉴에서 넣을 수 있어요.',4)};
+$('#soundBtn').onclick=()=>{soundOn=!soundOn;applyAudio();if(soundOn&&!tracks.length)bubble(butler,'아직 음원이 없어요.',4)};
 setInterval(()=>{if(me)refresh()},30000); // 혹시 놓친 알림 대비
 applyScene();setInterval(applyScene,30000);loadAudio();
 /* ---------- 책은 20초쯤 읽으면 덮고, 꺼냈던 책장에 다시 꽂아요 ---------- */
