@@ -925,13 +925,13 @@ function sitAt(i){ac();if(myAv.seat===i)return;if(seatTaken(i))return squatBehin
 let ch=null,trackTimer=null,pendingSt=null,lastSent='';
 const net={
   send(m){if(!ch)return;
-    if(m.t==='st'){const js=JSON.stringify(m.st);if(js===lastSent)return;pendingSt=m.st;
-      if(!trackTimer)trackTimer=setTimeout(()=>{trackTimer=null;if(!ch)return;lastSent=JSON.stringify(pendingSt);ch.track(pendingSt)},300);return}
+    if(m.t==='st'){const js=JSON.stringify({...m.st,ts:0});if(js===lastSent)return;pendingSt=m.st;
+      if(!trackTimer)trackTimer=setTimeout(()=>{trackTimer=null;if(!ch)return;lastSent=JSON.stringify({...pendingSt,ts:0});ch.track(pendingSt)},300);return}
     ch.send({type:'broadcast',event:'ev',payload:m})},
   join(){if(ch||!sb)return;lastSent='';
     ch=sb.channel('forest-office',{config:{presence:{key:me,enabled:true},broadcast:{self:false}}});
     ch.on('presence',{event:'sync'},()=>{const ps=ch.presenceState(),here=new Set();
-      for(const[id,arr]of Object.entries(ps)){if(id===me||!arr.length)continue;here.add(id);onNet({t:'st',id,st:arr[arr.length-1]})}
+      for(const[id,arr]of Object.entries(ps)){if(id===me||!arr.length)continue;here.add(id);onNet({t:'st',id,st:arr.reduce((a,b)=>(b.ts||0)>(a.ts||0)?b:a)})} // 같은 아이디로 PC·휴대폰 둘 다 켜 두면 가장 최근에 움직인 쪽을 따라요
       for(const id of[...peers.keys()])if(!here.has(id))onNet({t:'bye',id})});
     ch.on('broadcast',{event:'ev'},({payload})=>onNet(payload));
     ch.subscribe(st=>{if(st==='SUBSCRIBED'){lastSent='';announce()}})},
@@ -939,7 +939,7 @@ const net={
 // 누가 이미 앉아 있으면: 그 사람 뒤 바닥에 쪼그려 앉아 구경해요
 function squatBehind(i){const s=SEATS[i],x=clampX(s.x-Math.sin(s.ry)*.8),z=clampZ(s.z-Math.cos(s.ry)*.8);myAv.seat=null;
   myAv.target={x,z,done(){myAv.root.rotation.y=s.ry;myAv.squat=true;bubble(myAv,'옆에서 구경할게요',2.5);announce()}};announce()}
-function myState(){const p=myAv.root.position;return{x:+p.x.toFixed(2),z:+p.z.toFixed(2),ry:+myAv.root.rotation.y.toFixed(2),seat:myAv.seat,item:myAv.item,squat:!!myAv.squat,blanket:!!myAv.blanket,tx:myAv.target?.x,tz:myAv.target?.z}}
+function myState(){const p=myAv.root.position;return{x:+p.x.toFixed(2),z:+p.z.toFixed(2),ry:+myAv.root.rotation.y.toFixed(2),seat:myAv.seat,item:myAv.item,squat:!!myAv.squat,blanket:!!myAv.blanket,tx:myAv.target?.x,tz:myAv.target?.z,ts:Date.now()}}
 function announce(){if(myAv)net.send({t:'st',id:me,st:myState()})}
 let unknownT=0;
 function onNet(m){
@@ -955,7 +955,7 @@ function onNet(m){
     if(!!m.st.blanket!==!!a.blanket){a.blanket=!!m.st.blanket;setBlanket(a,a.blanket)}
     a.squat=!!m.st.squat;if(a.squat&&m.st.tx==null){a.target=null;a.root.position.set(m.st.x,0,m.st.z);a.root.rotation.y=m.st.ry}
     if(m.st.seat!=null){const s=SEATS[m.st.seat];a.target=null;a.seat=m.st.seat;a.root.position.set(s.x,0,s.z);a.root.rotation.y=s.ry}
-    else{a.seat=null;const tx=m.st.tx??m.st.x,tz=m.st.tz??m.st.z;if(Math.hypot(a.root.position.x-m.st.x,a.root.position.z-m.st.z)>3)a.root.position.set(m.st.x,0,m.st.z);a.target={x:tx,z:tz}}}}
+    else{a.seat=null;const tx=m.st.tx??m.st.x,tz=m.st.tz??m.st.z;if(Math.hypot(a.root.position.x-m.st.x,a.root.position.z-m.st.z)>3)a.root.position.set(m.st.x,0,m.st.z);const ry=m.st.ry;a.target=m.st.tx==null?{x:tx,z:tz,done(){a.root.rotation.y=ry}}:{x:tx,z:tz}}}}
 
 /* ================= 낮·밤·날씨·소리 ================= */
 // 배경 음악: 관리자가 여러 곡을 넣어 두고 한 곡을 골라 반복 재생 (이 브라우저의 IndexedDB에 저장)
