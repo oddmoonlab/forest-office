@@ -1203,6 +1203,9 @@ function renderAll(){applyScene();drawWB();drawFrame();renderNotice();renderChat
 $('#cafeBtn').onclick=openCafe;$('#lookBtn').onclick=openLook;$('#boardBtn').onclick=openBoard;$('#notesBtn').onclick=()=>openNotes('in');$('#adminBtn').onclick=openAdmin;$('#logoutBtn').onclick=leave;
 $('#soundBtn').onclick=()=>{soundOn=!soundOn;applyAudio();if(soundOn&&!tracks.length)bubble(butler,'아직 음원이 없어요.',4)};
 setInterval(()=>{if(me)refresh()},30000); // 혹시 놓친 알림 대비
+// 탭이 뒤로 가거나 휴대폰 화면이 꺼져 실시간 연결이 끊겼으면 다시 들어가요 (안 그러면 나만 남한테 안 보여요)
+function rejoin(){if(me&&myAv&&(!ch||ch.state==='closed'||ch.state==='errored')){net.leave();net.join()}}
+setInterval(rejoin,10000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)rejoin()});
 applyScene();setInterval(applyScene,30000);loadAudio();
 /* ---------- 책은 20초쯤 읽으면 덮고, 꺼냈던 책장에 다시 꽂아요 ---------- */
 const READ_SECS=20;
