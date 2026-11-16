@@ -949,7 +949,7 @@ function onNet(m){
   if(m.t==='say'){const p=peers.get(m.id);p&&bubble(p.av,m.text);return}
   if(m.t==='st'){let p=peers.get(m.id);const u=user(m.id);if(!u){if(Date.now()-unknownT>5000){unknownT=Date.now();refresh()}return} // 새로 만든 친구면 멤버 목록부터 새로
     const lk=JSON.stringify(lookOf(u));
-    if(!p||p.lk!==lk){const av=makeAvatar(u.name,lookOf(u));if(p){av.root.position.copy(p.av.root.position);scene.remove(p.av.root)}else av.root.position.set(m.st.x,0,m.st.z);
+    if(!p||p.lk!==lk){const av=makeAvatar(u.name,lookOf(u));if(p){av.root.position.copy(p.av.root.position);scene.remove(p.av.root)}else{av.root.position.set(m.st.x,0,m.st.z);av.root.rotation.y=m.st.ry||0}
       p={...p,av,lk};peers.set(m.id,p);renderStatus()} // 친구가 꾸미기를 바꾸면 다시 만들어요
     p.st=m.st;p.seen=Date.now();const a=p.av;setItem(a,m.st.item);
     if(!!m.st.blanket!==!!a.blanket){a.blanket=!!m.st.blanket;setBlanket(a,a.blanket)}
