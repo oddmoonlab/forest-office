@@ -929,7 +929,7 @@ const net={
       if(!trackTimer)trackTimer=setTimeout(()=>{trackTimer=null;if(!ch)return;lastSent=JSON.stringify(pendingSt);ch.track(pendingSt)},300);return}
     ch.send({type:'broadcast',event:'ev',payload:m})},
   join(){if(ch||!sb)return;lastSent='';
-    ch=sb.channel('forest-office',{config:{presence:{key:me},broadcast:{self:false}}});
+    ch=sb.channel('forest-office',{config:{presence:{key:me,enabled:true},broadcast:{self:false}}});
     ch.on('presence',{event:'sync'},()=>{const ps=ch.presenceState(),here=new Set();
       for(const[id,arr]of Object.entries(ps)){if(id===me||!arr.length)continue;here.add(id);onNet({t:'st',id,st:arr[arr.length-1]})}
       for(const id of[...peers.keys()])if(!here.has(id))onNet({t:'bye',id})});
